@@ -1,28 +1,22 @@
 // server.js
+require('dotenv').config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const morgan = require("morgan");
+const multer = require("multer"); 
+const upload = multer({ dest: "uploads/" }); 
 
 const app = express();
 // const PORT = process.env.PORT || 3000;
-const { PORT = 3000, DATABASE_URL } = process.env;
+const { PORT = 4000, DATABASE_URL } = process.env;
 
 
-// Middleware
-app.use(cors());
-app.use(morgan("dev"));
-app.use(express.json());
-
-// MongoDB connection setup
-// mongoose.connect(process.env.DATABASE_URL, {
-//   useUnifiedTopology: true,
-//   useNewUrlParser: true,
-// });
-mongoose.connect("mongodb://localhost:27017/casatrack", {
+mongoose.connect("mongodb+srv://juliorivera1993:Jrivera16@cluster0.wvj7l28.mongodb.net/?retryWrites=true&w=majority", {
   useUnifiedTopology: true,
   useNewUrlParser: true,
 });
+
 
 
 mongoose.connection
@@ -30,23 +24,103 @@ mongoose.connection
   .on("close", () => console.log("Disconnected from mongoose"))
   .on("error", (error) => console.log(error));
 
-// Routes
-app.get("/", (req, res) => {
-  res.send("Welcome to CasaTrack - Your Home Improvement Planner!");
+///////////////////////////////
+// MODELS
+////////////////////////////////
+const ProjectSchema = new mongoose.Schema({
+  projectName: String,
+  description: String,
+  startDate: Date,
+  endDate: Date,
+  status: String,
+  budget: Number,
+  imageUrl: String, 
 });
 
-// Import and use project routes
-const projectRoutes = require("./routes/projectRoutes");
-app.use(projectRoutes);
 
-// Import and use other routes
-const userRoutes = require("./routes/userRoutes");
-const uploadRoutes = require("./routes/uploadRoutes");
-const checklistRoutes = require("./routes/checklistRoutes");
+const Project = mongoose.model("Project", ProjectSchema);
 
-app.use(userRoutes);
-app.use(uploadRoutes);
-app.use(checklistRoutes);
+///////////////////////////////
+// MIDDLEWARE
+////////////////////////////////
+app.use(cors());
+app.use(morgan("dev"));
+app.use(express.json());
 
-// Listener
-app.listen(PORT, () => console.log(`Server is running on PORT ${PORT}`));
+
+///////////////////////////////
+// ROUTES
+////////////////////////////////
+
+
+app.get("/", (req, res) => {
+  res.send("Welcome to CasaTrack");
+});
+
+// PROJECT INDEX ROUTE
+app.get("/projects", async (req, res) => {
+  try {
+    res.json(await Project.find({}));
+  } catch (error) {
+    res.status(400).json(error);
+  }
+});
+
+// PROJECT CREATE ROUTE
+app.post("/projects", async (req, res) => {
+  try {
+    res.json(await Project.create(req.body));
+  } catch (error) {
+    res.status(400).json(error);
+  }
+});
+
+// PROJECT UPDATE ROUTE
+app.put("/projects/:id", async (req, res) => {
+  try {
+    res.json(await Project.findByIdAndUpdate(req.params.id, req.body, { new: true }));
+  } catch (error) {
+    res.status(400).json(error);
+  }
+});
+
+// PROJECT DELETE ROUTE
+app.delete("/projects/:id", async (req, res) => {
+  try {
+    const deletedProject = await Project.findByIdAndDelete(req.params.id);
+    if (!deletedProject) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+    res.json(deletedProject);
+  } catch (error) {
+    console.error("Error in DELETE route:", error);
+    res.status(500).json({ message: "Error deleting project", error: error.message });
+  }
+});
+
+// PROJECT IMAGE UPLOAD ROUTE
+app.post("/projects/:id/upload", upload.single("image"), async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.id);
+
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    // Save the image URL in the project document
+    project.imageUrl = req.file.path; // Assuming multer saves the file and provides its path
+
+    await project.save();
+
+    res.json(project);
+  } catch (error) {
+    res.status(400).json(error);
+  }
+});
+
+
+///////////////////////////////
+// LISTENER
+////////////////////////////////
+app.listen(PORT, () => console.log(`Listening on PORT ${PORT}`));
+
