@@ -43,7 +43,7 @@ const Project = mongoose.model("Project", ProjectSchema);
 ///////////////////////////////
 // MIDDLEWARE
 ////////////////////////////////
-app.use(cors());
+app.use(cors("*"));
 app.use(morgan("dev"));
 app.use(express.json());
 
