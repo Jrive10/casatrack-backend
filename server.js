@@ -47,6 +47,12 @@ app.use(cors("*"));
 app.use(morgan("dev"));
 app.use(express.json());
 
+// Add CORS middleware
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
+  
+  next();
+});
 
 ///////////////////////////////
 // ROUTES
